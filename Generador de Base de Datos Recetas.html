@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Base de Datos de Recetas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            justify-content: center;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 800px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+            color: #007bff;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        label {
+            margin-bottom: 10px;
+            font-weight: bold;
+            width: 100%;
+            text-align: left;
+        }
+        input, button {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+            max-width: 400px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .ingredient-group, .recipe-group {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: #fafafa;
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generador de Base de Datos de Recetas</h1>
+        <form id="recipe-form">
+            <label for="existing-file-upload">Subir Archivo Excel Existente:</label>
+            <input type="file" id="existing-file-upload" accept=".xlsx, .xls">
+
+            <div id="recipes-container">
+                <div class="recipe-group" data-recipe-id="1">
+                    <label for="recipe-name-1">Nombre de la Receta:</label>
+                    <input type="text" id="recipe-name-1" class="recipe-name" required>
+
+                    <label for="servings-1">Raciones:</label>
+                    <input type="number" id="servings-1" class="servings" required>
+
+                    <div class="ingredients-container" data-recipe-id="1">
+                        <div class="ingredient" data-ingredient-id="1">
+                            <label for="ingredient-1-1">Ingrediente:</label>
+                            <input type="text" id="ingredient-1-1" class="ingredient-name" required>
+
+                            <label for="quantity-1-1">Cantidad:</label>
+                            <input type="text" id="quantity-1-1" class="ingredient-quantity" required>
+
+                            <label for="unit-price-1-1">Precio por Unidad:</label>
+                            <input type="number" id="unit-price-1-1" class="ingredient-unit-price" required>
+                        </div>
+                    </div>
+                    <button type="button" class="add-ingredient" data-recipe-id="1">Agregar Ingrediente</button>
+                </div>
+            </div>
+            
+            <button type="button" id="add-recipe">Agregar Receta</button>
+            <button type="submit">Generar Recetas</button>
+        </form>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('add-recipe').addEventListener('click', addRecipe);
+        document.getElementById('recipe-form').addEventListener('submit', generateRecipes);
+        document.getElementById('existing-file-upload').addEventListener('change', handleFileUpload);
+
+        let recipeCount = 1;
+        let existingWorkbook = null;
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                existingWorkbook = XLSX.read(data, { type: 'array' });
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function addRecipe() {
+            recipeCount++;
+            const recipesContainer = document.getElementById('recipes-container');
+            const recipeGroup = document.createElement('div');
+            recipeGroup.classList.add('recipe-group');
+            recipeGroup.setAttribute('data-recipe-id', recipeCount);
+            
+            recipeGroup.innerHTML = `
+                <label for="recipe-name-${recipeCount}">Nombre de la Receta:</label>
+                <input type="text" id="recipe-name-${recipeCount}" class="recipe-name" required>
+
+                <label for="servings-${recipeCount}">Raciones:</label>
+                <input type="number" id="servings-${recipeCount}" class="servings" required>
+
+                <div class="ingredients-container" data-recipe-id="${recipeCount}">
+                    <div class="ingredient" data-ingredient-id="1">
+                        <label for="ingredient-${recipeCount}-1">Ingrediente:</label>
+                        <input type="text" id="ingredient-${recipeCount}-1" class="ingredient-name" required>
+
+                        <label for="quantity-${recipeCount}-1">Cantidad:</label>
+                        <input type="text" id="quantity-${recipeCount}-1" class="ingredient-quantity" required>
+
+                        <label for="unit-price-${recipeCount}-1">Precio por Unidad:</label>
+                        <input type="number" id="unit-price-${recipeCount}-1" class="ingredient-unit-price" required>
+                    </div>
+                </div>
+                <button type="button" class="add-ingredient" data-recipe-id="${recipeCount}">Agregar Ingrediente</button>
+            `;
+            
+            recipesContainer.appendChild(recipeGroup);
+
+            // Asignar evento a nuevo botón de "Agregar Ingrediente"
+            recipeGroup.querySelector('.add-ingredient').addEventListener('click', (event) => {
+                const recipeId = event.target.getAttribute('data-recipe-id');
+                addIngredient(recipeId);
+            });
+        }
+
+        function addIngredient(recipeId) {
+            const ingredientsContainer = document.querySelector(`.ingredients-container[data-recipe-id="${recipeId}"]`);
+            const ingredientCount = ingredientsContainer.children.length + 1;
+            const ingredientDiv = document.createElement('div');
+            ingredientDiv.classList.add('ingredient');
+            ingredientDiv.setAttribute('data-ingredient-id', ingredientCount);
+            
+            ingredientDiv.innerHTML = `
+                <label for="ingredient-${recipeId}-${ingredientCount}">Ingrediente:</label>
+                <input type="text" id="ingredient-${recipeId}-${ingredientCount}" class="ingredient-name" required>
+
+                <label for="quantity-${recipeId}-${ingredientCount}">Cantidad:</label>
+                <input type="text" id="quantity-${recipeId}-${ingredientCount}" class="ingredient-quantity" required>
+
+                <label for="unit-price-${recipeId}-${ingredientCount}">Precio por Unidad:</label>
+                <input type="number" id="unit-price-${recipeId}-${ingredientCount}" class="ingredient-unit-price" required>
+            `;
+            
+            ingredientsContainer.appendChild(ingredientDiv);
+        }
+
+        function generateRecipes(event) {
+            event.preventDefault();
+
+            const allRecipesData = [
+                ["Nombre de la Receta", "Raciones", "Ingrediente", "Cantidad", "Precio por Unidad", "Precio Total"]
+            ];
+
+            for (let r = 1; r <= recipeCount; r++) {
+                const recipeName = document.getElementById(`recipe-name-${r}`).value;
+                const servings = document.getElementById(`servings-${r}`).value;
+                const ingredientsContainer = document.querySelector(`.ingredients-container[data-recipe-id="${r}"]`);
+                const ingredients = [];
+                const quantities = [];
+                const unitPrices = [];
+                const totalPrices = [];
+
+                for (let i = 1; i <= ingredientsContainer.children.length; i++) {
+                    const ingredient = document.getElementById(`ingredient-${r}-${i}`).value;
+                    const quantity = document.getElementById(`quantity-${r}-${i}`).value;
+                    const unitPrice = document.getElementById(`unit-price-${r}-${i}`).value;
+                    const totalPrice = (parseFloat(quantity) * parseFloat(unitPrice)).toFixed(1);
+
+                    ingredients.push(ingredient);
+                    quantities.push(quantity);
+                    unitPrices.push(unitPrice);
+                    totalPrices.push(totalPrice);
+                }
+
+                for (let i = 0; i < ingredients.length; i++) {
+                    allRecipesData.push([
+                        recipeName,
+                        servings,
+                        ingredients[i],
+                        quantities[i],
+                        unitPrices[i],
+                        totalPrices[i]
+                    ]);
+                }
+            }
+
+            updateExcelFile(allRecipesData);
+        }
+
+        function updateExcelFile(allRecipesData) {
+            let workbook;
+            if (existingWorkbook) {
+                workbook = existingWorkbook;
+                const worksheet = XLSX.utils.aoa_to_sheet(allRecipesData);
+                XLSX.utils.sheet_add_aoa(workbook.Sheets[workbook.SheetNames[0]], allRecipesData, { origin: -1 });
+            } else {
+                workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.aoa_to_sheet(allRecipesData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Recetas");
+            }
+
+            XLSX.writeFile(workbook, "Recetas.xlsx");
+        }
+
+        // Asignar evento inicial para el primer botón de "Agregar Ingrediente"
+        document.querySelector('.add-ingredient').addEventListener('click', (event) => {
+            const recipeId = event.target.getAttribute('data-recipe-id');
+            addIngredient(recipeId);
+        });
+    </script>
+</body>
+</html>
